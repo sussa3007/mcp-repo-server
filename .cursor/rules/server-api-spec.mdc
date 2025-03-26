@@ -1,0 +1,733 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# MCP 프로젝트 API 구현 명세서
+현재 프론트엔드 프로젝트의 API 클라이언트 코드를 분석한 결과\, 다음과 같은 API들이 필요합니다\. 각 API는 공통 응답 형식을 따르며\, 프론트엔드에서 환경변수를 통해 API 기본 URL을 설정하도록 구현되어 있습니다\.
+
+## 공통 응답 구조
+
+모든 API는 다음과 같은 공통 응답 구조를 따릅니다\:
+
+```json
+{
+  "statusCode": 200,
+  "status": "SUCCESS",
+  "data": { /* 응답 본문 */ },
+  "message": "요청이 성공적으로 처리되었습니다."
+}
+
+```
+실패 시\:
+
+```json
+{
+  "statusCode": 400,
+  "status": "FAILED",
+  "errorCode": 0000  
+  "data": null,
+  "message": "요청 처리 중 오류가 발생했습니다."
+}
+
+```
+## 1\. GitHub API
+
+### 1\.1\. README 조회
+
+* **URI**\: `api/v1/github/:owner/:repo/readme`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "name": "README.md",
+      "path": "README.md",
+      "content": "base64로 인코딩된 내용"
+    },
+    "message": "README를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: GitHub 저장소의 README 파일 내용을 가져옵니다\.
+
+### 1\.2\. 저장소 콘텐츠 조회
+
+* **URI**\: `api/v1/github/:owner/:repo/contents/:path?`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": [
+      {
+        "name": "src",
+        "path": "src",
+        "type": "dir"
+      },
+      {
+        "name": "package.json",
+        "path": "package.json",
+        "type": "file"
+      }
+    ],
+    "message": "저장소 콘텐츠를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: GitHub 저장소의 파일 및 디렉토리 목록을 가져옵니다\.
+
+## 2\. 클라이언트 API
+
+### 2\.1\. 클라이언트 목록 조회
+
+* **URI**\: `api/v1/clients`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": [
+      {
+        "id": "1",
+        "name": "MCP Client 1",
+        "description": "A feature-rich MCP client with cross-platform support and extensible plugin system",
+        "language": "TypeScript",
+        "stars": 900,
+        "tags": ["mcp", "client", "feature-rich"],
+        "updatedAt": "2023-12-11T00:00:00.000Z",
+        "isOfficial": true
+      },
+      // ...
+    ],
+    "message": "클라이언트 목록을 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: MCP 클라이언트 라이브러리 목록을 조회합니다\.
+
+### 2\.2\. 클라이언트 상세 조회
+
+* **URI**\: `api/v1/clients/:id`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "1",
+      "name": "MCP Client 1",
+      "description": "A powerful MCP client implementation with extensive features and cross-platform support.",
+      "owner": "mcp-organization",
+      "repo": "mcp-client",
+      "githubUrl": "https://github.com/mcp-organization/mcp-client-1",
+      "isOfficial": true,
+      "language": "TypeScript",
+      "stars": 1200,
+      "forks": 350,
+      "license": "MIT",
+      "updatedAt": "2023-10-15",
+      "tags": ["mcp", "client", "typescript", "cross-platform"],
+      "installInstructions": "npm install mcp-client",
+      "usageExamples": [
+        "import { MCPClient } from 'mcp-client';\n\nconst client = new MCPClient({\n  serverUrl: 'wss://mcp-server.example.com',\n  apiKey: 'your-api-key'\n});\n\nclient.connect();",
+        "// Event handling\nclient.on('message', (message) => {\n  console.log('Received message:', message);\n});\n\nclient.on('error', (error) => {\n  console.error('Connection error:', error);\n});"
+      ],
+      "supportedLanguages": ["JavaScript", "TypeScript", "Python", "Java", "Go"],
+      "platforms": ["Node.js", "Browser", "Mobile", "Desktop"],
+      "contributors": [
+        {
+          "name": "John Doe",
+          "githubUrl": "https://github.com/johndoe",
+          "avatarUrl": "https://i.pravatar.cc/100?u=johndoe"
+        }
+      ]
+    },
+    "message": "클라이언트 상세 정보를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 특정 ID의 MCP 클라이언트 상세 정보를 조회합니다\.
+
+## 3\. 서버 API
+
+### 3\.1\. 서버 목록 조회
+
+* **URI**\: `api/v1/servers`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": [
+      {
+        "id": "1",
+        "name": "MCP Server 1",
+        "description": "고성능 MCP 서버 구현체로, 확장성과 신뢰성에 중점을 둠",
+        "language": "Go",
+        "stars": 1200,
+        "tags": ["mcp", "server", "high-performance"],
+        "updatedAt": "2023-10-11T00:00:00.000Z",
+        "isOfficial": true
+      },
+      // ...
+    ],
+    "message": "서버 목록을 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: MCP 서버 구현체 목록을 조회합니다\.
+
+### 3\.2\. 서버 상세 조회
+
+* **URI**\: `api/v1/servers/:id`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "1",
+      "name": "MCP Server 1",
+      "description": "A powerful MCP server implementation with extensive features and excellent performance.",
+      "owner": "mcp-organization",
+      "repo": "mcp-server",
+      "githubUrl": "https://github.com/mcp-organization/mcp-server-1",
+      "demoUrl": "https://demo.mcpserver.org",
+      "isOfficial": true,
+      "language": "Go",
+      "stars": 1800,
+      "forks": 450,
+      "license": "Apache-2.0",
+      "updatedAt": "2023-11-20",
+      "tags": ["mcp", "server", "go", "high-performance"],
+      "apiEndpoints": [
+        {
+          "method": "GET",
+          "path": "/v1/models",
+          "description": "List all available models",
+          "responseExample": "{\n  \"models\": [\n    {\n      \"id\": \"mcp-1\",\n      \"name\": \"MCP Model 1\",\n      \"version\": \"1.0\"\n    },\n    {\n      \"id\": \"mcp-2\",\n      \"name\": \"MCP Model 2\",\n      \"version\": \"1.0\"\n    }\n  ]\n}"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/completions",
+          "description": "Generate a completion",
+          "requestExample": "{\n  \"model\": \"mcp-1\",\n  \"prompt\": \"Hello, world!\",\n  \"max_tokens\": 100\n}",
+          "responseExample": "{\n  \"id\": \"cmpl-1\",\n  \"object\": \"completion\",\n  \"created\": 1589478378,\n  \"model\": \"mcp-1\",\n  \"choices\": [\n    {\n      \"text\": \"Hello! How can I assist you today?\",\n      \"finish_reason\": \"length\"\n    }\n  ]\n}"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MCP_API_KEY",
+          "description": "API key for authentication",
+          "required": true
+        },
+        {
+          "name": "MCP_HOST",
+          "description": "Host address for the server",
+          "required": true,
+          "defaultValue": "0.0.0.0"
+        },
+        {
+          "name": "MCP_PORT",
+          "description": "Port for the server to listen on",
+          "required": false,
+          "defaultValue": "8080"
+        }
+      ],
+      "database": {
+        "type": "PostgreSQL",
+        "description": "Used for storing model metadata and usage statistics",
+        "schema": "CREATE TABLE models (\n  id VARCHAR(50) PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  version VARCHAR(20) NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);"
+      },
+      "systemRequirements": {
+        "hardware": ["4+ CPU cores", "16+ GB RAM", "100+ GB disk space"],
+        "software": ["Go 1.18+", "PostgreSQL 13+", "Docker (optional)"]
+      },
+      "commands": [
+        {
+          "name": "Start Server",
+          "description": "Start the MCP server in development mode",
+          "example": "go run cmd/server/main.go"
+        },
+        {
+          "name": "Build Server",
+          "description": "Build the MCP server binary",
+          "example": "go build -o mcp-server cmd/server/main.go"
+        },
+        {
+          "name": "Run Tests",
+          "description": "Run all tests",
+          "example": "go test ./..."
+        }
+      ],
+      "deploymentOptions": [
+        {
+          "name": "Docker",
+          "description": "Deploy using Docker",
+          "example": "docker run -p 8080:8080 mcp-organization/mcp-server:latest"
+        },
+        {
+          "name": "Kubernetes",
+          "description": "Deploy on Kubernetes",
+          "example": "kubectl apply -f kubernetes/mcp-server.yaml"
+        }
+      ]
+    },
+    "message": "서버 상세 정보를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 특정 ID의 MCP 서버 상세 정보를 조회합니다\.
+
+## 4\. 사용 사례 API
+
+### 4\.1\. 사용 사례 목록 조회
+
+* **URI**\: `api/v1/use-cases`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": [
+      {
+        "id": "1",
+        "title": "MCP Use Case 1: Real-time Collaboration Platform",
+        "summary": "Technical insights and implementation details for building Real-time Collaboration Platform with MCP",
+        "imageUrl": "https://images.unsplash.com/photo-1570000000000",
+        "tags": ["mcp", "case-study", "open-source"],
+        "updatedAt": "2023-09-03T00:00:00.000Z",
+        "author": {
+          "name": "Developer 1",
+          "avatarUrl": "https://i.pravatar.cc/100?u=dev1"
+        }
+      },
+      // ...
+    ],
+    "message": "사용 사례 목록을 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: MCP 사용 사례 목록을 조회합니다\.
+
+### 4\.2\. 사용 사례 상세 조회
+
+* **URI**\: `api/v1/use-cases/:id`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "1",
+      "title": "MCP Use Case 1: Real-time Collaboration Platform",
+      "summary": "Technical insights and implementation details for building a real-time collaboration platform with MCP",
+      "content": "# Building a Real-time Collaboration Platform with MCP\n\n## Project Background\n\nOur team wanted to build a platform that allows developers and designers to collaborate in real-time. We adopted MCP to overcome the limitations of existing tools and support seamless communication.\n\n...",
+      "imageUrl": "https://images.unsplash.com/photo-1522071820081-009f0129c71c",
+      "updatedAt": "2023-11-10",
+      "author": {
+        "name": "John Developer",
+        "avatarUrl": "https://i.pravatar.cc/100?u=johndeveloper"
+      },
+      "tags": ["real-time", "collaboration", "WebSocket", "React", "Node.js"],
+      "servers": [
+        {
+          "id": "1",
+          "name": "MCP Server 1",
+          "description": "Official MCP server implementation providing stable and scalable architecture"
+        },
+        {
+          "id": "2",
+          "name": "MCP Server 2",
+          "description": "High-performance MCP server optimized for large-scale concurrent connections"
+        }
+      ],
+      "clients": [
+        {
+          "id": "1",
+          "name": "MCP Client 1",
+          "description": "Official MCP client library supporting various platforms"
+        },
+        {
+          "id": "3",
+          "name": "MCP Client 3",
+          "description": "Lightweight MCP client optimized for mobile environments"
+        }
+      ]
+    },
+    "message": "사용 사례 상세 정보를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 특정 ID의 MCP 사용 사례 상세 정보를 조회합니다\.
+
+## 5\. 포스트 API
+
+### 5\.1\. 포스트 목록 조회
+
+* **URI**\: `api/v1/posts`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": [
+      {
+        "id": "1",
+        "title": "MCP Protocol 1.0 Release Announcement",
+        "summary": "Detailed explanation and technical insights about MCP Protocol 1.0 Release Announcement.",
+        "imageUrl": "https://images.unsplash.com/photo-1580010000000",
+        "category": "Technical",
+        "publishedAt": "2023-12-04T00:00:00.000Z",
+        "author": {
+          "name": "Author 1",
+          "avatarUrl": "https://i.pravatar.cc/100?u=author1"
+        }
+      },
+      // ...
+    ],
+    "message": "포스트 목록을 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: MCP 관련 블로그 포스트 목록을 조회합니다\.
+
+### 5\.2\. 포스트 상세 조회
+
+* **URI**\: `api/v1/posts/:id`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "1",
+      "title": "MCP Protocol 1.0 Release Announcement",
+      "content": "# MCP Protocol 1.0 Release Announcement\n\n## Introduction\n\nMCP (Model Context Protocol) is an innovative protocol for real-time communication. In this article, we'll explore the key features and implementation methods of MCP.\n\n...",
+      "summary": "Detailed explanation and technical insights about MCP Protocol 1.0 Release Announcement.",
+      "imageUrl": "https://images.unsplash.com/photo-1580136579312-94651dfd596d",
+      "category": "Technical",
+      "publishedAt": "2023-12-04T00:00:00.000Z",
+      "author": {
+        "name": "MCP Development Team",
+        "avatarUrl": "https://i.pravatar.cc/100?u=mcpteam"
+      },
+      "tags": ["MCP", "Protocol", "Real-time", "Communication", "WebSocket"],
+      "relatedPosts": [
+        {
+          "id": "2",
+          "title": "Building Scalable Real-time Applications with MCP"
+        },
+        {
+          "id": "3",
+          "title": "MCP Client Performance Optimization Techniques"
+        }
+      ]
+    },
+    "message": "포스트 상세 정보를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 특정 ID의 블로그 포스트 상세 정보를 조회합니다\.
+
+## 6\. 제출 API
+
+### 6\.1\. 프로젝트 제출
+
+* **URI**\: `api/v1/submissions`
+* **Method**\: POST
+* **요청 헤더**\:
+```warp-runnable-command
+  Content-Type: application/json
+  Accept: application/json
+  
+```
+* **요청 바디**\:
+```json
+  {
+    "name": "My MCP Client",
+    "author": "홍길동",
+    "type": "client",
+    "description": "A lightweight MCP client written in TypeScript",
+    "repoUrl": "https://github.com/hongildong/my-mcp-client",
+    "websiteUrl": "https://my-mcp-client.example.com",
+    "tags": ["mcp", "client", "typescript", "lightweight"],
+    "email": "gildong@example.com"
+  }
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 201,
+    "status": "SUCCESS",
+    "data": {
+      "id": "submission-1627384950000",
+      "status": "pending",
+      "message": "Your submission is being reviewed by our team.",
+      "createdAt": "2023-12-17T12:30:00.000Z"
+    },
+    "message": "프로젝트 제출이 완료되었습니다."
+  }
+  
+```
+* **API 기능 설명**\: 새로운 MCP 서버 또는 클라이언트 프로젝트를 제출합니다\.
+
+### 6\.2\. 제출 상태 확인
+
+* **URI**\: `api/v1/submissions/:id`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "submission-1627384950000",
+      "status": "pending",
+      "message": "Your submission is still being reviewed.",
+      "createdAt": "2023-12-16T12:30:00.000Z"
+    },
+    "message": "제출 상태를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 제출한 프로젝트의 검토 상태를 확인합니다\.
+
+## 7\. 사용자 API \(요청에 따른 추가 API\)
+
+### 7\.1\. 사용자 정보 조회
+
+* **URI**\: `api/v1/user`
+* **Method**\: GET
+* **요청 헤더**\:
+```warp-runnable-command
+  Authorization: Bearer {token}
+  Accept: application/json
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "id": "user-123",
+      "username": "hongildong",
+      "email": "gildong@example.com",
+      "name": "홍길동",
+      "avatarUrl": "https://i.pravatar.cc/100?u=hongildong",
+      "createdAt": "2023-01-15T00:00:00.000Z",
+      "updatedAt": "2023-12-10T00:00:00.000Z",
+      "submissions": [
+        {
+          "id": "submission-1627384950000",
+          "name": "My MCP Client",
+          "status": "pending",
+          "createdAt": "2023-12-16T12:30:00.000Z"
+        }
+      ],
+      "favorites": ["server-1", "client-2"]
+    },
+    "message": "사용자 정보를 성공적으로 조회했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 현재 로그인한 사용자의 정보를 조회합니다\.
+
+### 7\.2\. 사용자 로그인
+
+* **URI**\: `api/v1/user/login`
+* **Method**\: POST
+* **요청 헤더**\:
+```warp-runnable-command
+  Content-Type: application/json
+  Accept: application/json
+  
+```
+* **요청 바디**\:
+```json
+  {
+    "email": "gildong@example.com",
+    "password": "securepassword123"
+  }
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 200,
+    "status": "SUCCESS",
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "user-123",
+        "username": "hongildong",
+        "email": "gildong@example.com",
+        "name": "홍길동",
+        "avatarUrl": "https://i.pravatar.cc/100?u=hongildong"
+      }
+    },
+    "message": "로그인에 성공했습니다."
+  }
+  
+```
+* **API 기능 설명**\: 사용자 인증 및 로그인을 처리합니다\.
+
+### 7\.3\. 사용자 등록
+
+* **URI**\: `api/v1/user/register`
+* **Method**\: POST
+* **요청 헤더**\:
+```warp-runnable-command
+  Content-Type: application/json
+  Accept: application/json
+  
+```
+* **요청 바디**\:
+```json
+  {
+    "username": "hongildong",
+    "email": "gildong@example.com",
+    "password": "securepassword123",
+    "name": "홍길동"
+  }
+  
+```
+* **응답 예시**\:
+```json
+  {
+    "statusCode": 201,
+    "status": "SUCCESS",
+    "data": {
+      "id": "user-123",
+      "username": "hongildong",
+      "email": "gildong@example.com",
+      "name": "홍길동",
+      "createdAt": "2023-12-17T12:30:00.000Z"
+    },
+    "message": "사용자 등록이 완료되었습니다."
+  }
+  
+```
+* **API 기능 설명**\: 새로운 사용자를 등록합니다\.
+
+## 추가 고려사항
+
+1. **인증 및 권한 제어**\:
+* 인증이 필요한 API는 JWT 토큰 기반의 인증 구현
+* 관리자 전용 API는 역할 기반 접근 제어\(RBAC\) 구현
+
+2. **페이지네이션 지원**\:
+* 목록 조회 API\(`/clients`\, `/servers`\, `/posts`\, `/use-cases`\)는 페이지네이션 지원
+* 예\: `?page=1&pageSize=10`
+
+3. **필터링 및 정렬 기능**\:
+* 목록 조회 API에 필터링 및 정렬 옵션 추가
+* 예\: `?sortBy=updatedAt&order=desc&tag=typescript`
+
+4. **CORS 설정**\:
+* 프론트엔드와 백엔드가 서로 다른 도메인에서 호스팅될 경우 CORS 설정 필요
+* 적절한 Origin 헤더 및 Preflight 요청 처리
+
+5. **에러 처리 표준화**\:
+* 일관된 에러 코드 및 메시지 체계 구현
+* 데이터베이스 오류\, 인증 오류\, 유효성 검증 오류 등을 명확히 구분
+
+6. **캐싱 전략**\:
+* 자주 액세스되는 데이터\(서버 목록\, 클라이언트 목록 등\)에 대한 캐싱 메커니즘 구현
+* Redis 또는 인메모리 캐싱을 통한 성능 최적화
+
+7. **API 버전 관리**\:
+* URI 경로에 버전 정보\(`/api/v1/...`\)를 포함하여 향후 API 변경 시 하위 호환성 유지
+* 새로운 메이저 버전 출시 시 기존 버전 일정 기간 유지
+
+8. **요청 rate limit**\:
+* API 남용 방지를 위한 rate limiting 구현
+* IP 주소 또는 사용자 ID 기반 제한
+
+9. **로깅 및 모니터링**\:
+* API 호출 로깅 및 성능 모니터링
+* 오류 발생 시 알림 시스템 구축
+
+10. **Swagger\/OpenAPI 문서화**\:
+    * API 문서 자동화
+    * 개발자 친화적인 API 문서 제공
+
+11. **데이터 유효성 검증**\:
+    * 요청 데이터에 대한 강력한 유효성 검증
+    * 타입\, 형식\, 범위 등 다양한 측면에서 검증
+
+12. **환경 구성**\:
+    * 개발\, 테스트\, 프로덕션 환경에 따른 구성 분리
+    * 환경변수를 통한 설정 관리
+
+이 API 명세는 현재 프론트엔드 코드의 분석을 기반으로 작성되었으며\, 백엔드 서버 구현 시 이를 참고하여 개발할 수 있습니다\. 실제 구현 시 도메인 모델\, 데이터베이스 스키마\, 비즈니스 로직 등을 추가로 고려해야 합니다\.

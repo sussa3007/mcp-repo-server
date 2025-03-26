@@ -1,0 +1,690 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# MCP 프로젝트 서버 구축 단계별 계획
+
+## 1. 프로젝트 초기 설정 및 구조화
+
+### 1.1 개발 환경 구성
+
+- Spring Boot 3.x 프로젝트 생성 (Spring Initializr 활용)
+- 필수 의존성 추가:
+  - Spring Web (RESTful API 구현)
+  - Spring Data JPA (데이터 엑세스 레이어)
+  - Spring Security (인증 및 권한 처리)
+  - MySQL Connector (데이터베이스 연결)
+  - Lombok (반복 코드 제거)
+  - Validation (입력값 검증)
+  - Redis (캐싱 및 세션 관리)
+  - JWT 라이브러리 (토큰 기반 인증)
+  - QueryDSL (동적 쿼리 생성)
+  - Spring WebFlux (GitHub API 클라이언트)
+  - ModelMapper (객체 간 매핑)
+
+### 1.2 프로젝트 구조 설정
+
+```
+src/main/java/com/miraclestudio/mcpreposerver
+├── config/           # 설정 클래스
+│   ├── security/     # 보안 관련 설정
+│   ├── redis/        # Redis 설정
+│   ├── web/          # Web 관련 설정 (CORS 등)
+│   └── jpa/          # JPA 설정
+├── controller/       # API 컨트롤러
+│   ├── github/       # GitHub 관련 API
+│   ├── repository/   # 레포지토리 관련 API
+│   ├── user/         # 사용자 관련 API
+│   ├── submission/   # 제출 관련 API
+│   ├── post/         # 블로그 포스트 관련 API
+│   └── usecase/      # 사용 사례 관련 API
+├── domain/           # 엔티티 클래스
+│   ├── common/       # 공통 엔티티 (BaseTimeEntity 등)
+│   ├── user/         # 사용자 관련 엔티티
+│   ├── repository/   # 레포지토리 관련 엔티티
+│   ├── submission/   # 제출 관련 엔티티
+│   ├── post/         # 블로그 포스트 관련 엔티티
+│   └── usecase/      # 사용 사례 관련 엔티티
+├── dto/              # DTO 클래스
+│   ├── request/      # 요청 DTO
+│   └── response/     # 응답 DTO
+├── exception/        # 커스텀 예외
+├── repository/       # 데이터 액세스 레이어
+│   ├── querydsl/     # QueryDSL 구현체
+│   └── custom/       # 커스텀 레포지토리
+├── security/         # 보안 구성
+│   ├── jwt/          # JWT 관련 클래스
+│   ├── oauth/        # OAuth 관련 클래스
+│   └── filter/       # 보안 필터
+├── service/          # 비즈니스 로직
+│   ├── github/       # GitHub 연동 서비스
+│   ├── repository/   # 레포지토리 관리 서비스
+│   ├── user/         # 사용자 관리 서비스
+│   ├── submission/   # 제출 관리 서비스
+│   ├── post/         # 블로그 포스트 관리 서비스
+│   └── usecase/      # 사용 사례 관리 서비스
+└── util/             # 유틸리티 클래스
+```
+
+## 2. 데이터베이스 설계 및 엔티티 구현
+
+### 2.1 ERD 설계
+
+- **User 엔티티**
+
+  - id, username, email, password, name, avatarUrl, role, createdAt, updatedAt
+  - 즐겨찾기 레포지토리 목록 (ElementCollection)
+  - 제출 이력 (OneToMany with Submission)
+
+- **ServerRepository 엔티티**
+
+  - id, name, description, owner, repo, githubUrl, demoUrl, isOfficial
+  - language, stars, forks, license, tags, createdAt, updatedAt
+  - API 엔드포인트 정보 (OneToMany with ApiEndpoint)
+  - 환경 변수 설정 (OneToMany with EnvironmentVariable)
+  - 시스템 요구사항 (Embedded)
+  - 배포 옵션 (OneToMany with DeploymentOption)
+  - 데이터베이스 스키마 정보 (Embedded)
+
+- **ClientRepository 엔티티**
+
+  - id, name, description, owner, repo, githubUrl, isOfficial
+  - language, stars, forks, license, tags, createdAt, updatedAt
+  - 설치 가이드 (installInstructions)
+  - 사용 예제 (ElementCollection)
+  - 지원 언어 (ElementCollection)
+  - 지원 플랫폼 (ElementCollection)
+  - 기여자 정보 (OneToMany with Contributor)
+
+- **Post(블로그) 엔티티**
+
+  - id, title, content, summary, imageUrl, category, publishedAt, createdAt, updatedAt
+  - 작성자 정보 (author, avatarUrl)
+  - 태그 목록 (ElementCollection)
+  - 관련 포스트 (ManyToMany with Post)
+
+- **UseCase 엔티티**
+
+  - id, title, content, summary, imageUrl, createdAt, updatedAt
+  - 작성자 정보 (author, avatarUrl)
+  - 태그 목록 (ElementCollection)
+  - 관련 서버/클라이언트 (ManyToMany with ServerRepository/ClientRepository)
+
+- **Submission 엔티티**
+  - id, name, author, type, description, repoUrl, websiteUrl, tags, email
+  - status (PENDING, APPROVED, REJECTED), message, createdAt, updatedAt
+  - 사용자 연결 (ManyToOne with User)
+
+### 2.2 엔티티 클래스 구현
+
+- JPA 엔티티 어노테이션 적용
+  - `@Entity`, `@Table`, `@Id`, `@GeneratedValue` 등
+- 연관 관계 매핑
+  - `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@ElementCollection` 등을 활용
+  - 지연 로딩 및 영속성 전이 설정
+  - 양방향 관계에서 편의 메서드 구현
+- Auditing 기능 구현 (생성일, 수정일 자동화)
+  - `@CreatedDate`, `@LastModifiedDate` 활용
+  - `@EnableJpaAuditing` 설정
+- Lombok 활용하여 코드 간소화
+  - `@Getter`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor` 등 활용
+
+## 3. 공통 응답 구조 및 예외 처리 구현
+
+### 3.1 공통 응답 DTO 구현
+
+```java
+@Getter
+@Builder
+public class ApiResponse<T> {
+    private int statusCode;
+    private String status;
+    private T data;
+    private String message;
+    private Integer errorCode;
+
+    // 성공 응답 생성 메서드
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return ApiResponse.<T>builder()
+                .statusCode(200)
+                .status("SUCCESS")
+                .data(data)
+                .message(message)
+                .build();
+    }
+
+    // 성공 응답 생성 메서드 (상태 코드 지정)
+    public static <T> ApiResponse<T> success(T data, String message, int statusCode) {
+        return ApiResponse.<T>builder()
+                .statusCode(statusCode)
+                .status("SUCCESS")
+                .data(data)
+                .message(message)
+                .build();
+    }
+
+    // 실패 응답 생성 메서드
+    public static <T> ApiResponse<T> error(int statusCode, String message, Integer errorCode) {
+        return ApiResponse.<T>builder()
+                .statusCode(statusCode)
+                .status("FAILED")
+                .errorCode(errorCode)
+                .data(null)
+                .message(message)
+                .build();
+    }
+}
+```
+
+### 3.2 글로벌 예외 처리기 구현
+
+- **에러 코드 체계 설계**
+
+  - 1000번대: 공통 에러 (입력값 오류, 메소드 미지원 등)
+  - 2000번대: 인증/인가 관련 에러 (인증 실패, 권한 부족 등)
+  - 3000번대: 사용자 관련 에러 (사용자 없음, 중복 이메일 등)
+  - 4000번대: GitHub API 관련 에러 (API 호출 실패, 레포지토리 없음 등)
+  - 5000번대: 레포지토리 관련 에러 (서버/클라이언트 레포지토리 없음 등)
+  - 6000번대: 제출 관련 에러 (제출 정보 없음, 상태 변경 실패 등)
+
+- **`@ControllerAdvice` 활용한 중앙 예외 처리**
+
+  - 비즈니스 예외 처리
+  - 유효성 검증 예외 처리
+  - 시스템 예외 처리
+
+- **비즈니스 예외 클래스 설계**
+
+  ```java
+  @Getter
+  public class BusinessException extends RuntimeException {
+      private final ErrorCode errorCode;
+
+      public BusinessException(ErrorCode errorCode) {
+          super(errorCode.getMessage());
+          this.errorCode = errorCode;
+      }
+
+      // 추가 생성자...
+  }
+  ```
+
+- **예외별 응답 코드 정의**
+
+  ```java
+  @Getter
+  @RequiredArgsConstructor
+  public enum ErrorCode {
+      // 공통 에러 코드
+      INVALID_INPUT_VALUE(1000, "유효하지 않은 입력값입니다."),
+      METHOD_NOT_ALLOWED(1001, "허용되지 않은 메소드입니다."),
+      ENTITY_NOT_FOUND(1002, "데이터를 찾을 수 없습니다."),
+      // ... 기타 에러 코드
+
+      private final int code;
+      private final String message;
+  }
+  ```
+
+## 4. GitHub API 연동 기능 구현
+
+### 4.1 GitHub API 클라이언트 개발
+
+- **WebClient 기반 GitHub API 클라이언트 구현**
+  - Non-blocking 요청 처리
+  - 타임아웃 및 재시도 설정
+  - 에러 핸들링
+- **GitHub API 인증 처리**
+
+  - 환경변수로 GitHub API 토큰 설정
+  - 헤더에 인증 정보 추가
+  - 요청 속도 제한 처리 (Rate Limiting)
+
+- **레포지토리, README 조회 기능 개발**
+  - `/repos/{owner}/{repo}` 엔드포인트 호출로 레포지토리 정보 조회
+  - `/repos/{owner}/{repo}/readme` 엔드포인트 호출로 README 조회
+  - 응답 데이터를 내부 모델로 변환
+
+### 4.2 GitHub 서비스 레이어 구현
+
+- **레포지토리 메타데이터 조회**
+
+  - 이름, 설명, 소유자, 별표 수, 포크 수, 라이선스 정보 등 추출
+  - 언어 정보 가져오기
+
+- **README 콘텐츠 조회**
+
+  - Base64 인코딩된 내용 디코딩
+  - Markdown 형식 처리
+
+- **파일 목록 조회 기능**
+
+  - `/repos/{owner}/{repo}/contents/{path}` 엔드포인트 호출
+  - 파일 및 디렉토리 구조 구성
+
+- **OAuth 연동 기능**
+  - GitHub OAuth 인증 흐름 구현
+  - 사용자 토큰 저장 및 관리
+
+## 5. 핵심 API 구현 (1단계)
+
+### 5.1 서버/클라이언트 레포지토리 API
+
+- **서버 레포지토리 목록 조회 API (`GET /api/v1/servers`)**
+
+  - 요청 파라미터:
+    - 페이지네이션: `page`, `size` (기본값: 0, 10)
+    - 필터링: `language`, `tag`, `updatedAfter`, `search`
+    - 정렬: `sortBy`, `direction` (별표 수, 업데이트 날짜, 이름)
+  - 응답: 서버 레포지토리 목록 및 페이지 정보
+
+- **서버 레포지토리 상세 조회 API (`GET /api/v1/servers/{id}`)**
+
+  - 응답: 서버 레포지토리 상세 정보 (API 엔드포인트, 환경 변수, 시스템 요구사항, 배포 옵션 등 포함)
+
+- **클라이언트 레포지토리 목록 조회 API (`GET /api/v1/clients`)**
+
+  - 서버 레포지토리와 동일한 페이지네이션/필터링/정렬 기능
+  - 추가 필터: `platform`, `supportedLanguage`
+  - 응답: 클라이언트 레포지토리 목록 및 페이지 정보
+
+- **클라이언트 레포지토리 상세 조회 API (`GET /api/v1/clients/{id}`)**
+
+  - 응답: 클라이언트 레포지토리 상세 정보 (설치 가이드, 사용 예제, 지원 언어 및 플랫폼, 기여자 정보 등 포함)
+
+- **저장소 컨텐츠 API**
+  - GitHub README 조회 API (`GET /api/v1/github/{owner}/{repo}/readme`)
+  - GitHub 파일 목록 조회 API (`GET /api/v1/github/{owner}/{repo}/contents/{path}`)
+
+### 5.2 사용자 인증 API
+
+- **회원가입 API (`POST /api/v1/user/register`)**
+
+  - 요청: username, email, password, name
+  - 유효성 검증:
+    - 이메일 형식 검증
+    - 비밀번호 복잡도 검증 (8자 이상, 문자/숫자/특수문자 조합)
+    - 사용자명 중복 확인
+  - 응답: 사용자 기본 정보 (비밀번호 제외)
+
+- **로그인 API (`POST /api/v1/user/login`)**
+
+  - 요청: email, password
+  - 인증 처리: Spring Security Authentication Manager 활용
+  - 응답: JWT 토큰 및 사용자 정보
+
+- **소셜 로그인 API**
+
+  - GitHub 로그인 (`GET /api/v1/oauth/github`)
+  - Google 로그인 (`GET /api/v1/oauth/google`)
+  - 응답: JWT 토큰 및 사용자 정보
+
+- **사용자 정보 조회 API (`GET /api/v1/user`)**
+  - 요청 헤더: Authorization Bearer Token
+  - 응답: 인증된 사용자 정보 (제출 이력, 즐겨찾기 레포지토리 포함)
+
+## 6. 고급 API 구현 (2단계)
+
+### 6.1 블로그 포스트 API
+
+- **포스트 목록 조회 API (`GET /api/v1/posts`)**
+
+  - 요청 파라미터:
+    - 페이지네이션: `page`, `size` (기본값: 0, 10)
+    - 필터링: `category`, `tag`, `search`
+    - 정렬: `sortBy`, `direction` (게시일, 제목)
+  - 응답: 블로그 포스트 목록 및 페이지 정보
+
+- **포스트 상세 조회 API (`GET /api/v1/posts/{id}`)**
+
+  - 응답: 포스트 상세 정보 (제목, 내용, 요약, 이미지, 카테고리, 게시일, 작성자, 태그, 관련 포스트 등)
+
+- **포스트 작성 API (`POST /api/v1/posts`)**
+
+  - 접근 제한: ADMIN 권한 필요
+  - 요청: 제목, 내용, 요약, 이미지, 카테고리, 태그 등
+  - 응답: 생성된 포스트 정보
+
+- **포스트 수정 API (`PUT /api/v1/posts/{id}`)**
+
+  - 접근 제한: ADMIN 권한 필요
+  - 요청: 제목, 내용, 요약, 이미지, 카테고리, 태그 등
+  - 응답: 수정된 포스트 정보
+
+- **포스트 삭제 API (`DELETE /api/v1/posts/{id}`)**
+  - 접근 제한: ADMIN 권한 필요
+  - 응답: 삭제 성공 메시지
+
+### 6.2 사용 사례 API
+
+- **사용 사례 목록 조회 API (`GET /api/v1/use-cases`)**
+
+  - 요청 파라미터:
+    - 페이지네이션: `page`, `size` (기본값: 0, 10)
+    - 필터링: `tag`, `search`, `industry`
+    - 정렬: `sortBy`, `direction` (등록일, 인기도)
+  - 응답: 사용 사례 목록 및 페이지 정보
+
+- **사용 사례 상세 조회 API (`GET /api/v1/use-cases/{id}`)**
+
+  - 응답: 사용 사례 상세 정보 (제목, 내용, 요약, 이미지, 작성자, 태그, 관련 서버/클라이언트 레포지토리 등)
+
+- **사용 사례 작성 API (`POST /api/v1/use-cases`)**
+
+  - 접근 제한: ADMIN 권한 필요
+  - 요청: 제목, 내용, 요약, 이미지, 태그, 관련 레포지토리 ID 등
+  - 응답: 생성된 사용 사례 정보
+
+- **사용 사례 수정 API (`PUT /api/v1/use-cases/{id}`)**
+
+  - 접근 제한: ADMIN 권한 필요
+  - 요청: 제목, 내용, 요약, 이미지, 태그, 관련 레포지토리 ID 등
+  - 응답: 수정된 사용 사례 정보
+
+- **사용 사례 삭제 API (`DELETE /api/v1/use-cases/{id}`)**
+  - 접근 제한: ADMIN 권한 필요
+  - 응답: 삭제 성공 메시지
+
+### 6.3 제출 시스템 API
+
+- **프로젝트 제출 API (`POST /api/v1/submissions`)**
+
+  - 요청: 이름, 작성자, 타입(서버/클라이언트), 설명, GitHub URL, 웹사이트 URL(선택), 태그, 이메일
+  - 처리:
+    - GitHub URL 유효성 검증
+    - Public 레포지토리 확인
+    - GitHub API로 기본 정보 조회
+  - 응답: 제출 ID 및 상태 정보
+
+- **제출 상태 조회 API (`GET /api/v1/submissions/{id}`)**
+
+  - 응답: 제출 상태 (대기중/승인됨/거부됨), 메시지, 날짜
+
+- **제출 목록 조회 API (`GET /api/v1/submissions`)**
+
+  - 접근 제한: ADMIN 권한 필요 (일반 사용자는 자신의 제출만 조회 가능)
+  - 요청 파라미터:
+    - 페이지네이션: `page`, `size` (기본값: 0, 10)
+    - 필터링: `status`, `type`
+  - 응답: 제출 목록 및 페이지 정보
+
+- **제출 상태 업데이트 API (`PUT /api/v1/submissions/{id}/status`)**
+
+  - 접근 제한: ADMIN 권한 필요
+  - 요청: 상태(승인/거부), 메시지
+  - 응답: 업데이트된 제출 정보
+
+- **자동 리뷰 시스템 연동**
+  - Claude 3.7 Sonnet AI & GitHub MCP Tools 활용
+  - 제출된 레포지토리 분석
+  - 자동 승인/거부 판단 및 피드백 생성
+
+## 7. 보안 구현
+
+### 7.1 Spring Security 설정
+
+- **보안 설정 클래스 구현**
+
+  - WebSecurityConfigurerAdapter 대신 SecurityFilterChain 빈 등록 (Spring Security 5.7+ 방식)
+  - 인증이 필요한 엔드포인트 설정
+  - ADMIN 권한이 필요한 엔드포인트 설정
+  - 인증 예외 설정 (회원가입, 로그인, 공개 API 등)
+
+- **JWT 기반 인증 구현**
+
+  - JWT 토큰 생성 클래스
+    - 토큰 생성, 유효성 검증, 클레임 추출 기능
+    - 액세스 토큰 및 리프레시 토큰 지원
+  - JwtAuthenticationFilter 구현
+    - 요청 헤더에서 토큰 추출
+    - 토큰 유효성 검증
+    - SecurityContext에 인증 정보 설정
+
+- **권한 관리 (일반 사용자/관리자)**
+
+  - UserDetailsService 구현
+  - GrantedAuthority 기반 권한 체크
+  - @PreAuthorize 어노테이션 활용
+
+- **CORS 설정**
+
+  - 허용 오리진 설정 (개발/프로덕션 환경 분리)
+  - 허용 메서드 및 헤더 설정
+  - 인증 헤더 노출 설정
+
+- **CSRF 방어 구현**
+  - REST API에 적합한 CSRF 설정
+  - 필요한 경우 CSRF 토큰 처리
+
+### 7.2 입력값 검증
+
+- **Bean Validation 적용**
+
+  - DTO 클래스에 검증 어노테이션 적용 (@NotNull, @Size, @Email 등)
+  - Custom Validator 구현 (복잡한 유효성 검증을 위한)
+  - 글로벌 Validator 설정
+
+- **필터 구현을 통한 XSS 방어**
+  - 입력값 필터링
+  - HTML 이스케이프 처리
+  - Content-Security-Policy 설정
+
+## 8. 성능 최적화
+
+### 8.1 캐싱 시스템 구현
+
+- **Redis 캐싱 설정**
+
+  - Redis 연결 설정
+  - `@EnableCaching` 및 CacheManager 빈 등록
+  - 캐시 전략 설정 (TTL, 크기 제한 등)
+
+- **자주 조회되는 데이터 캐싱 처리**
+
+  - 서버/클라이언트 레포지토리 목록
+  - 서버/클라이언트 레포지토리 상세 정보
+  - 블로그 포스트 및 사용 사례
+  - `@Cacheable`, `@CachePut`, `@CacheEvict` 어노테이션 활용
+
+- **캐시 무효화 전략 구현**
+  - 데이터 변경 시 캐시 갱신
+  - 스케줄링된 캐시 정리
+  - 캐시 버전 관리
+
+### 8.2 쿼리 최적화
+
+- **QueryDSL 활용 동적 쿼리 구현**
+
+  - 복잡한 필터링 조건에 대한 동적 쿼리 생성
+  - 예: `BooleanBuilder`를 사용한 조건부 쿼리
+
+- **N+1 문제 해결 (fetch join 활용)**
+
+  - `@EntityGraph` 활용
+  - JPQL의 `JOIN FETCH` 활용
+  - 필요한 연관 엔티티 미리 로딩
+
+- **인덱스 설계 및 적용**
+
+  - 자주 조회/필터링/정렬되는 컬럼에 인덱스 설정
+  - 복합 인덱스 설계
+  - 인덱스 사용 여부 모니터링
+
+- **페이징 최적화**
+  - 오프셋 기반 페이징과 커서 기반 페이징 비교 검토
+  - 대용량 데이터에 커서 기반 페이징 적용 검토
+
+## 9. 테스트 코드 작성
+
+### 9.1 단위 테스트
+
+- **JUnit 5를 사용한 테스트 작성**
+
+  - 테스트 라이프사이클 관리 (`@BeforeEach`, `@AfterEach` 등)
+  - 테스트 그룹화 및 태깅
+  - 확장 기능 활용
+
+- **Mockito를 활용한 모킹**
+
+  - `@Mock`, `@InjectMocks` 활용
+  - 의존성 모킹 및 동작 정의
+  - 인자 캡처 및 검증
+
+- **서비스 레이어 테스트**
+  - 비즈니스 로직 단위 테스트
+  - 다양한 시나리오에 대한 테스트 케이스 작성
+  - 예외 처리 검증
+
+### 9.2 통합 테스트
+
+- **컨트롤러 테스트 (MockMvc 활용)**
+
+  - API 엔드포인트 테스트
+  - 요청/응답 검증
+  - 인증/인가 테스트
+
+- **레포지토리 테스트 (@DataJpaTest)**
+
+  - 쿼리 메서드 테스트
+  - 커스텀 레포지토리 테스트
+  - 트랜잭션 처리 테스트
+
+- **엔드투엔드 테스트**
+  - 전체 흐름 테스트
+  - 실제 데이터베이스 연동 테스트
+  - 사용자 시나리오 기반 테스트
+
+## 10. 배포 환경 구성
+
+### 10.1 Docker 컨테이너화
+
+- **Dockerfile 작성**
+
+  - JDK 17 기반 이미지 설정
+  - 애플리케이션 빌드 및 실행 환경 구성
+  - 볼륨 및 포트 설정
+
+- **멀티스테이지 빌드 구현**
+
+  - 빌드 스테이지와 실행 스테이지 분리
+  - 최종 이미지 크기 최적화
+
+- **환경변수 설정**
+
+  - 환경별 설정 분리 (개발, 테스트, 프로덕션)
+  - 민감한 정보 외부화
+
+- **docker-compose.yml 작성**
+  - 애플리케이션, 데이터베이스, Redis 서비스 구성
+  - 네트워크 및 볼륨 설정
+
+### 10.2 CI/CD 파이프라인 구성
+
+- **GitHub Actions 워크플로우 작성**
+
+  - 빌드, 테스트, 배포 단계 정의
+  - 브랜치별 워크플로우 설정 (main, develop 등)
+  - 환경별 배포 설정
+
+- **테스트 자동화**
+
+  - 모든 테스트 실행 및 검증
+  - 테스트 커버리지 측정
+  - 임계값 설정 및 모니터링
+
+- **배포 자동화**
+  - 개발 환경 자동 배포
+  - 스테이징 환경 수동 승인 후 배포
+  - 프로덕션 환경 수동 승인 후 배포
+
+## 11. 모니터링 및 로깅 시스템 구축
+
+### 11.1 로깅 시스템 구현
+
+- **SLF4J + Logback 설정**
+
+  - 로깅 프레임워크 설정
+  - 로그 포맷 정의
+  - 환경별 로깅 레벨 설정
+
+- **로그 레벨 구분 적용**
+
+  - ERROR: 시스템 동작에 문제가 있는 경우
+  - WARN: 잠재적 문제 발생 가능성
+  - INFO: 주요 시스템 이벤트
+  - DEBUG: 개발 디버깅용 상세 정보
+  - TRACE: 가장 상세한 정보
+
+- **로그 파일 관리**
+  - 로그 로테이션 설정
+  - 로그 보관 기간 설정
+  - 로그 압축 및 아카이빙
+
+### 11.2 모니터링 시스템 구축
+
+- **Spring Boot Actuator 설정**
+
+  - 시스템 상태 엔드포인트 활성화
+  - 메트릭 엔드포인트 구성
+  - 보안 설정
+
+- **성능 지표 수집**
+
+  - JVM 메모리 사용량
+  - 스레드 상태
+  - 데이터베이스 연결 풀 상태
+  - API 응답 시간
+  - 에러 발생 빈도
+
+- **알림 시스템 연동**
+  - 임계값 기반 알림 설정
+  - 긴급 상황 알림 채널 구성 (이메일, 슬랙 등)
+  - 알림 그룹 및 에스컬레이션 정책
+
+## 구현 우선순위
+
+### Phase 1 (MVP) - 1~2주차
+
+1. **기본 설정 및 인프라 (1-3단계)**
+
+   - 프로젝트 초기 설정
+   - 데이터베이스 설계 및 엔티티 구현
+   - 공통 응답 구조 및 예외 처리 구현
+
+2. **GitHub API 연동 및 핵심 API (4-5단계)**
+
+   - GitHub API 클라이언트 개발
+   - 서버/클라이언트 레포지토리 API 구현
+   - 사용자 인증 API 구현
+
+3. **인증 및 보안 구현 (7단계)**
+   - Spring Security 설정
+   - JWT 기반 인증 구현
+   - 입력값 검증
+
+### Phase 2 - 3~4주차
+
+4. **고급 API 기능 (6단계)**
+
+   - 블로그 포스트 API 구현
+   - 사용 사례 API 구현
+   - 제출 시스템 API 구현
+
+5. **성능 최적화 (8단계)**
+   - 캐싱 시스템 구현
+   - 쿼리 최적화
+
+### Phase 3 - 5~6주차
+
+6. **테스트 코드 작성 (9단계)**
+
+   - 단위 테스트 작성
+   - 통합 테스트 작성
+
+7. **배포 및 모니터링 (10-11단계)**
+   - Docker 컨테이너화
+   - CI/CD 파이프라인 구성
+   - 모니터링 및 로깅 시스템 구축
+
+각 단계는 이전 단계의 결과물을 기반으로 점진적으로 구현하며, 필요에 따라 반복적으로 개선해 나가는 것이 좋습니다. 특히 기능 구현 후에는 반드시 테스트와 코드 리뷰를 진행하여 품질을 유지해야 합니다.
