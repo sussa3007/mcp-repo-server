@@ -1,9 +1,21 @@
-
 server:
   port: 8082
+  servlet:
+    context-path: /api/v1
   tomcat:
     connection-timeout: -1
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /api-docs
 spring:
+  profiles:
+    active: dev
+  main:
+    allow-bean-definition-overriding: true
   thymeleaf:
     cache: false
     prefix: classpath:/templates/
@@ -13,31 +25,45 @@ spring:
     multipart:
       max-file-size: 5000MB
       max-request-size: 5000MB
+
   datasource:
-    url: ${MAIN_DB_URL}
-    username: ${MAIN_DB_ID}
-    password: ${MAIN_DB_PW}
+    url: ${MAIN_DB_URL:jdbc:mysql://localhost:3306/mcprepo?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${MAIN_DB_ID:root}
+    password: ${MAIN_DB_PW:}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  sql:
-    init:
-      mode: never
+
   jpa:
     defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
-    #    show-sql: true
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 1000
+        dialect: org.hibernate.dialect.MySQLDialect
+  sql:
+    init:
+      mode: never
+      platform: mysql
+      encoding: UTF-8
+      data-locations: classpath:data.sql
   security:
     oauth2:
       client:
         registration:
-          google:
-            client-id: ${GOOGLE_OAUTH2_ID}
           github:
-            client-id: ${GITHUB_OAUTH2_ID}
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope:
+              - read:user
+              - user:email
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
 
   cache:
     type: redis
@@ -45,3 +71,47 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+
+# GitHub API 설정
+github:
+  api:
+    url: https://api.github.com
+    token: ${GITHUB_API_TOKEN:}
+
+# Anthropic API 설정
+anthropic:
+  api:
+    url: https://api.anthropic.com
+    key: ${ANTHROPIC_API_KEY:}
+    model: claude-3-7-sonnet-20240229
+    max-tokens: 4000
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET}
+  token-validity-in-seconds: ${JWT_EXPIRATION:86400}
+
+# 로깅 설정
+logging:
+  level:
+    com.miraclestudio.mcpreposerver: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  # 로그 파일 경로 및 보존 설정
+  file:
+    name: ${LOG_PATH:./logs}/mcpreposerver.log
+  config: classpath:logback-spring.xml
+
+# 로그 파일 관리 설정
+log:
+  path: ${LOG_PATH:./logs}
+  error:
+    retention-days: 7 # 에러 로그 보존 기간(일)
+  retention-days: 30 # 일반 로그 보존 기간(일)
+
+app:
+  oauth2:
+    authorized-redirect-uris: ${OAUTH2_AUTHORIZED_REDIRECT_URIS}
+    default-success-url: ${OAUTH2_DEFAULT_SUCCESS_URL}
+    failure-redirect-url: ${OAUTH2_FAILURE_REDIRECT_URL}

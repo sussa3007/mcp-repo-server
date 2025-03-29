@@ -1,15 +1,18 @@
 package com.miraclestudio.mcpreposerver.domain.usecase;
 
 import com.miraclestudio.mcpreposerver.domain.common.BaseTimeEntity;
+import com.miraclestudio.mcpreposerver.domain.common.Tag;
 import com.miraclestudio.mcpreposerver.domain.repository.client.ClientRepository;
 import com.miraclestudio.mcpreposerver.domain.repository.server.ServerRepository;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "use_cases")
@@ -21,13 +24,13 @@ public class UseCase extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long useCaseId;
 
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, length = 10000)
     @Lob
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(nullable = false, length = 500)
@@ -42,66 +45,68 @@ public class UseCase extends BaseTimeEntity {
 
     private String industry;
 
-    @ElementCollection
-    @CollectionTable(name = "use_case_tags", joinColumns = @JoinColumn(name = "use_case_id"))
-    @Column(name = "tag")
+    @OneToMany(mappedBy = "useCase", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private Set<String> tags = new HashSet<>();
+    private Set<UseCaseTag> useCaseTags = new LinkedHashSet<>();
 
-    @ManyToMany
-    @JoinTable(name = "use_case_server_repositories", joinColumns = @JoinColumn(name = "use_case_id"), inverseJoinColumns = @JoinColumn(name = "server_repository_id"))
+    @OneToMany(mappedBy = "useCase", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ServerRepository> serverRepositories = new ArrayList<>();
+    private List<UseCaseServerMapping> serverMappings = new LinkedList<>();
 
-    @ManyToMany
-    @JoinTable(name = "use_case_client_repositories", joinColumns = @JoinColumn(name = "use_case_id"), inverseJoinColumns = @JoinColumn(name = "client_repository_id"))
+    @OneToMany(mappedBy = "useCase", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ClientRepository> clientRepositories = new ArrayList<>();
+    private List<UseCaseClientMapping> clientMappings = new LinkedList<>();
 
     /**
      * 태그 추가
      */
-    public void addTag(String tag) {
-        this.tags.add(tag);
+    public void addUseCaseTag(UseCaseTag tag) {
+        this.useCaseTags.add(tag);
+        tag.setUseCase(this);
     }
 
     /**
      * 태그 제거
      */
-    public void removeTag(String tag) {
-        this.tags.remove(tag);
+    public void removeUseCaseTag(UseCaseTag tag) {
+        this.useCaseTags.remove(tag);
+        tag.setUseCase(null);
+    }
+
+    /**
+     * 태그 목록 조회
+     */
+    public List<String> getTagNames() {
+        return this.useCaseTags.stream()
+                .map(UseCaseTag::getTag)
+                .map(Tag::getName)
+                .toList();
     }
 
     /**
      * 서버 레포지토리 추가
      */
     public void addServerRepository(ServerRepository serverRepository) {
-        if (!this.serverRepositories.contains(serverRepository)) {
-            this.serverRepositories.add(serverRepository);
-        }
-    }
-
-    /**
-     * 서버 레포지토리 제거
-     */
-    public void removeServerRepository(ServerRepository serverRepository) {
-        this.serverRepositories.remove(serverRepository);
+        UseCaseServerMapping mapping = UseCaseServerMapping.builder()
+                .useCase(this)
+                .serverRepository(serverRepository)
+                .build();
+        this.serverMappings.add(mapping);
+        mapping.setUseCase(this);
+        mapping.setServerRepository(serverRepository);
     }
 
     /**
      * 클라이언트 레포지토리 추가
      */
     public void addClientRepository(ClientRepository clientRepository) {
-        if (!this.clientRepositories.contains(clientRepository)) {
-            this.clientRepositories.add(clientRepository);
-        }
-    }
-
-    /**
-     * 클라이언트 레포지토리 제거
-     */
-    public void removeClientRepository(ClientRepository clientRepository) {
-        this.clientRepositories.remove(clientRepository);
+        UseCaseClientMapping mapping = UseCaseClientMapping.builder()
+                .useCase(this)
+                .clientRepository(clientRepository)
+                .build();
+        this.clientMappings.add(mapping);
+        mapping.setUseCase(this);
+        mapping.setClientRepository(clientRepository);
     }
 
     /**

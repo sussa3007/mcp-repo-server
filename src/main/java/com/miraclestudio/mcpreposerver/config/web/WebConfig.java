@@ -12,10 +12,9 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(
-                    "http://localhost:3000", 
+                        "http://localhost:3000",
                         "https://mcp.miraclestudio.com",
-                        "https://mcp-repo.vercel.app"
-                )
+                        "https://mcp-repo.vercel.app")
                 .allowedMethods(
                         HttpMethod.GET.name(),
                         HttpMethod.POST.name(),
@@ -24,6 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
                         HttpMethod.DELETE.name(),
                         HttpMethod.OPTIONS.name())
                 .allowedHeaders("*")
+                .exposedHeaders("Authorization", "Refresh-Token")
                 .allowCredentials(true)
                 .maxAge(3600);
     }

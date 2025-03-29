@@ -1,11 +1,14 @@
 package com.miraclestudio.mcpreposerver.domain.repository.server;
 
 import com.miraclestudio.mcpreposerver.domain.common.BaseTimeEntity;
+import com.miraclestudio.mcpreposerver.domain.usecase.UseCaseServerMapping;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.DynamicUpdate;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "server_repositories")
@@ -13,54 +16,50 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@DynamicUpdate
 public class ServerRepository extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long serverRepositoryId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 1000)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String owner;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String repo;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String githubUrl;
 
+
+    @Column(length = 255)
     private String demoUrl;
 
     @Column(nullable = false)
     private Boolean isOfficial;
 
-    @Column(nullable = false)
+    @Column(length = 50)
     private String language;
 
-    @Column(nullable = false)
+    @Column
     private Integer stars;
 
-    @Column(nullable = false)
+    @Column
     private Integer forks;
 
-    @Column(nullable = false)
+    @Column(length = 100)
     private String license;
 
-    @Column(nullable = false)
-    private String tags;
-
     @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ApiEndpoint> apiEndpoints = new ArrayList<>();
-
-    @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<EnvironmentVariable> environmentVariables = new ArrayList<>();
+    private Set<ServerRepositoryTag> serverRepositoryTags = new LinkedHashSet<>();
 
     @Embedded
     private Database database;
@@ -70,42 +69,84 @@ public class ServerRepository extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<Command> commands = new ArrayList<>();
+    private Set<McpTool> mcpTools = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<DeploymentOption> deploymentOptions = new ArrayList<>();
+    private Set<EnvironmentVariable> environmentVariables = new LinkedHashSet<>();
 
-    /**
-     * API 엔드포인트 추가
-     */
-    public void addApiEndpoint(ApiEndpoint apiEndpoint) {
-        apiEndpoints.add(apiEndpoint);
-        apiEndpoint.setServerRepository(this);
+    @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<Command> commands = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<DeploymentOption> deploymentOptions = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<ServerContributorMapping> contributorMappings = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "serverRepository", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<UseCaseServerMapping> useCaseMappings = new LinkedHashSet<>();
+
+    public void addMcpTool(McpTool mcpTool) {
+        this.mcpTools.add(mcpTool);
+        mcpTool.setServerRepository(this);
     }
 
-    /**
-     * 환경 변수 추가
-     */
     public void addEnvironmentVariable(EnvironmentVariable environmentVariable) {
-        environmentVariables.add(environmentVariable);
+        this.environmentVariables.add(environmentVariable);
         environmentVariable.setServerRepository(this);
     }
 
-    /**
-     * 명령어 추가
-     */
     public void addCommand(Command command) {
-        commands.add(command);
+        this.commands.add(command);
         command.setServerRepository(this);
     }
 
-    /**
-     * 배포 옵션 추가
-     */
     public void addDeploymentOption(DeploymentOption deploymentOption) {
-        deploymentOptions.add(deploymentOption);
+        this.deploymentOptions.add(deploymentOption);
         deploymentOption.setServerRepository(this);
+    }
+
+    public void addContributor(ServerContributorMapping mapping) {
+        this.contributorMappings.add(mapping);
+        mapping.setServerRepository(this);
+    }
+
+    public void setSystemRequirements(SystemRequirements systemRequirements) {
+        this.systemRequirements = systemRequirements;
+    }
+
+    public void setDatabase(Database database) {
+        this.database = database;
+    }
+
+    /**
+     * 태그 추가
+     */
+    public void addServerRepositoryTag(ServerRepositoryTag tag) {
+        this.serverRepositoryTags.add(tag);
+        tag.setServerRepository(this);
+    }
+
+    /**
+     * 태그 제거
+     */
+    public void removeServerRepositoryTag(ServerRepositoryTag tag) {
+        this.serverRepositoryTags.remove(tag);
+        tag.setServerRepository(null);
+    }
+
+    /**
+     * 태그 목록 조회
+     */
+    public List<String> getTagNames() {
+        return this.serverRepositoryTags.stream()
+                .map(tag -> tag.getTag().getName())
+                .toList();
     }
 
     /**
@@ -118,10 +159,12 @@ public class ServerRepository extends BaseTimeEntity {
     @Builder
     public static class Database {
         private String type;
+
+        @Column(name = "database_description")
         private String description;
 
         @Column(length = 2000)
-        private String schema;
+        private String descriptionSchema;
     }
 
     /**

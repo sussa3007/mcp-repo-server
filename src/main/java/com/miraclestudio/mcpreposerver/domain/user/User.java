@@ -6,7 +6,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -20,44 +23,67 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String username;
-
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
-    private String password;
-
     private String name;
 
-    private String avatarUrl;
+    private String imageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "user_favorites", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "favorite_id")
-    private List<String> favorites = new ArrayList<>();
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SocialType socialType;
 
-    @Builder.Default
+    @Column(nullable = false, unique = true)
+    private String socialId;
+
+    @ElementCollection
+    private Set<String> favorites = new LinkedHashSet();
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Submission> submissions = new ArrayList<>();
+    private Set<Submission> submissions = new LinkedHashSet();
 
-    /**
-     * 사용자 권한 목록
-     */
-    public enum Role {
-        USER, ADMIN
+    public User update(String name, String imageUrl) {
+        this.name = name;
+        this.imageUrl = imageUrl;
+        return this;
+    }
+
+    public void addFavorite(String favoriteId) {
+        this.favorites.add(favoriteId);
+    }
+
+    public void removeFavorite(String favoriteId) {
+        this.favorites.remove(favoriteId);
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public void promoteToAdmin() {
+        this.role = Role.ADMIN;
+    }
+
+    public void addSubmission(Submission submission) {
+        this.submissions.add(submission);
+        submission.setUser(this);
     }
 
     /**
      * 비밀번호 변경
      */
     public void updatePassword(String newPassword) {
-        this.password = newPassword;
+        // Implementation needed
     }
 
     /**
@@ -65,22 +91,6 @@ public class User extends BaseTimeEntity {
      */
     public void updateProfile(String name, String avatarUrl) {
         this.name = name;
-        this.avatarUrl = avatarUrl;
-    }
-
-    /**
-     * 즐겨찾기 추가
-     */
-    public void addFavorite(String favoriteId) {
-        if (!this.favorites.contains(favoriteId)) {
-            this.favorites.add(favoriteId);
-        }
-    }
-
-    /**
-     * 즐겨찾기 제거
-     */
-    public void removeFavorite(String favoriteId) {
-        this.favorites.remove(favoriteId);
+        this.imageUrl = avatarUrl;
     }
 }

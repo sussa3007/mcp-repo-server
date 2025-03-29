@@ -14,19 +14,22 @@ public class EnvironmentVariable extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long environmentVariableId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
-    private Boolean isRequired;
+    @Column(length = 255)
+    private String defaultValue;
 
     @Column(nullable = false)
-    private String defaultValue;
+    private Boolean required;
+
+    @Column(length = 50)
+    private String type;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "server_repository_id")

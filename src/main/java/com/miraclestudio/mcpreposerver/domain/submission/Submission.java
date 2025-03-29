@@ -5,6 +5,10 @@ import com.miraclestudio.mcpreposerver.domain.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 @Entity
 @Table(name = "submissions")
 @Getter
@@ -15,7 +19,7 @@ public class Submission extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long submissionId;
 
     @Column(nullable = false)
     private String name;
@@ -23,7 +27,8 @@ public class Submission extends BaseTimeEntity {
     @Column(nullable = false)
     private String author;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
+    @Setter
     private Long repositoryId;
 
     @Enumerated(EnumType.STRING)
@@ -34,12 +39,14 @@ public class Submission extends BaseTimeEntity {
     private String description;
 
     @Column(nullable = false)
-    private String githubUrl;
+    private String repoUrl;
 
     private String websiteUrl;
 
-    @Column(nullable = false)
-    private String tags;
+    // 태그와의 관계 설정
+    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<SubmissionTag> submissionTags = new LinkedHashSet<>();
 
     @Column(nullable = false)
     private String email;
@@ -48,11 +55,16 @@ public class Submission extends BaseTimeEntity {
     @Column(nullable = false)
     private Status status;
 
+    @Column(columnDefinition = "TEXT")
     private String message;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 
     /**
      * 레포지토리 유형
@@ -66,6 +78,31 @@ public class Submission extends BaseTimeEntity {
      */
     public enum Status {
         PENDING, APPROVED, REJECTED
+    }
+
+    /**
+     * 태그 추가
+     */
+    public void addSubmissionTag(SubmissionTag tag) {
+        this.submissionTags.add(tag);
+        tag.setSubmission(this);
+    }
+
+    /**
+     * 태그 제거
+     */
+    public void removeSubmissionTag(SubmissionTag tag) {
+        this.submissionTags.remove(tag);
+        tag.setSubmission(null);
+    }
+
+    /**
+     * 태그 목록 조회
+     */
+    public List<String> getTagNames() {
+        return this.submissionTags.stream()
+                .map(tag -> tag.getTag().getName())
+                .toList();
     }
 
     /**

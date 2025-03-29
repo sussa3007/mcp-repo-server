@@ -37,3 +37,8 @@ out/
 .vscode/
 
 env.yml
+logs/
+mcp-server-data.json
+mcp-server-data-converted.json
+github_service.py
+convert_mcp_data.py

@@ -124,11 +124,13 @@ src/main/java/com/miraclestudio/mcpreposerver
   - `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@ElementCollection` 등을 활용
   - 지연 로딩 및 영속성 전이 설정
   - 양방향 관계에서 편의 메서드 구현
+  - 주의사항 : ManyToMany 사용시 `@OneToMany`, `@ManyToOne` , `@OneToMany` 를 적적히 사용하여 조인테이블을 만든다(필수)
+  - 연관 관계 매핑시 여러 데이터 저장이 필요한 필드를 정의할때 `new LinkedHashSet()` 을 사용하여 필드를 초기화 한다
 - Auditing 기능 구현 (생성일, 수정일 자동화)
   - `@CreatedDate`, `@LastModifiedDate` 활용
   - `@EnableJpaAuditing` 설정
 - Lombok 활용하여 코드 간소화
-  - `@Getter`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor` 등 활용
+  - `@Getter`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor` 등 활용 
 
 ## 3. 공통 응답 구조 및 예외 처리 구현
 

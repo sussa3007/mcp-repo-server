@@ -14,19 +14,22 @@ public class Command extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long commandId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String command;
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(length = 20)
     private String type;
+
+    @Column(length = 50)
+    private String platform;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "server_repository_id")
