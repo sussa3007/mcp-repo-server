@@ -61,7 +61,6 @@ spring:
             scope:
               - email
               - profile
-
   cache:
     type: redis
   data:
