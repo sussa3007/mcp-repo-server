@@ -50,12 +50,14 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
+            redirect-uri: https://api.mcp-repository.com/api/v1/login/oauth2/code/github
             scope:
               - read:user
               - user:email
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: https://api.mcp-repository.com/api/v1/login/oauth2/code/google
             scope:
               - email
               - profile

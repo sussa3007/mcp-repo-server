@@ -52,7 +52,9 @@ public class SecurityConfig {
                                                 .userInfoEndpoint(userInfo -> userInfo
                                                                 .userService(customOAuth2UserService))
                                                 .successHandler(oAuth2SuccessHandler)
-                                                .failureHandler(oAuth2FailureHandler));
+                                                .failureHandler(oAuth2FailureHandler)
+                                                .redirectionEndpoint(endpoint -> endpoint
+                                                                .baseUri("/login/oauth2/code/*")));
 
                 http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
