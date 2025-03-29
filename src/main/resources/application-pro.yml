@@ -20,7 +20,6 @@ spring:
     cache: true
     prefix: classpath:/templates/
     suffix: .html
-
   servlet:
     multipart:
       max-file-size: 5000MB
