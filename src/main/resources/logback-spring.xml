@@ -85,7 +85,7 @@
     </springProfile>
     
     <!-- 운영 환경 설정 -->
-    <springProfile name="prod">
+    <springProfile name="pro">
         <!-- 루트 로거 설정 -->
         <root level="INFO">
             <appender-ref ref="FILE" />
